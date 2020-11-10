@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车</title>
+    <style>
+        .active {
+            background-color: darkgray;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" >
+        <h2 v-bind:title="title2" >  {{title1}} </h2> 
+        <p>
+            <input type="text" v-model="course" v-on:keydown.enter="addCourse">
+            <button @click="addCourse">ADD</button>
+            <!-- v-on:click  -->
+            {{course}}
+        </p>
+        <!-- 列表渲染 -->
+        <!-- 动态的样式类active，选中渲染样式，未被选中取消样式 -->
+        <!-- 绑定class ，对象的方式，键值对，键是样式名称，值是表达值（逻辑真假） -->
+        <!-- <div v-for= "c in courses" :key="c"  :class="{active: selectedCourse===c}" @click="selectedCourse=c">
+            {{c}}
+        </div> -->
+
+        <!-- 用style 的方式来渲染列表 -->
+        <!-- 必须注意羊肉串方式切换成小驼峰, transparent透明 -->
+        <div v-for= "c in courses" :key="c" 
+             :style="{backgroundColor: selectedCourse===c ? '#ddd' : 'transparent' }"   
+             @click="selectedCourse=c">
+            {{c}}
+        </div>
+
+    </div>
+    <script src="vue.js"></script>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    title1: "购物车111111111111",
+                    title2: "购物车222222222222",
+                    selectedCourse: "" ,  //当前选中的课程，去确定对应样式是否被渲染
+                    course: '',
+                    courses: ['web全栈','web高级']
+                }
+            },
+            methods: {
+                addCourse() {
+                    this.courses.push(this.course)
+                    this.course=""
+                }
+            },
+        })
+
+    </script>
+</body>
+
+</html>
