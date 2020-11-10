@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车</title>
+    <style>
+        .active {
+            background-color: darkgray;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h2 v-bind:title="title2"> {{title1}} </h2>
+        <p>
+            <input type="text" v-model="course" v-on:keydown.enter="addCourse">
+            <button @click="addCourse">ADD</button>
+            <!-- v-on:click  -->
+            {{course}}
+        </p>
+
+        <!-- 条件渲染 -->
+        <!-- v-if 和 v-show的区别 -->
+        <p v-if="courses.length===0">当前没有相关课程</p>
+        <!-- 建议 v-else 和 v-for 不用放在一个标签上 -->
+        <div v-else>
+            <div v-for="c in courses" :key="c" 
+                :style="{backgroundColor: selectedCourse===c ? '#ddd' : 'transparent' }"
+                @click="selectedCourse=c">
+                {{c}}
+            </div>
+        </div>
+        <p>
+            课程总数：{{total}}  ---使用计算属性
+            <br>
+            课程总数：{{totalCount}}  ---使用监控属性
+        </p>
+    </div>
+    <script src="vue.js"></script>
+    <script>
+        // 模拟异步数据调用
+        function getCourses(){
+            return new Promise(resolve =>{
+                setTimeout(()=>{
+                    resolve(['web全栈', 'web高级'])
+                },2000);
+            })
+        }
+        const app = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    title1: "购物车111111111111",
+                    title2: "购物车222222222222",
+                    selectedCourse: "",  //当前选中的课程，去确定对应样式是否被渲染
+                    course: '',
+                    courses: []
+                }
+            },
+            // 组件已经创建，由于未挂载，DOM元素还不存在
+            async created () {
+                const courses= await getCourses();
+                this.courses = courses
+            },
+            //在mounted阶段，DOM已经存在，可以访问DOM元素
+            mounted () {
+                ;
+            },
+            methods: {
+                addCourse() {
+                    this.courses.push(this.course)
+                    this.course = ""
+                }
+            },
+            // 用计算属性实现，计算属性有缓存性，如果数据未发生变化，页面不会重新渲染
+            computed: {
+                total() {
+                    return this.courses.length+" 门" 
+                }
+            },
+            watch: {
+                courses: {
+                    immediate: true,
+                    deep: true,
+                    handler(newValue, oldValue) {
+                        this.totalCount=newValue.length + " 门"
+                    }
+                }
+            },
+      
+        })
+        // 查看下app的选项中的render函数（虚拟DOM的渲染函数）
+        console.log(app.$options.render);
+
+    </script>
+</body>
+
+</html>
