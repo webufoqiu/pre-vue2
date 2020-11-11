@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物车</title>
+    <style>
+        .active {
+            background-color: darkgray;
+        }
+        .message-box {
+            padding: 10px 20px;
+            background: #4fc08d;
+            border: 1px solid #42b983;
+
+        }
+        .message-box-close {
+            float:right;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <message :show.sync="show" >
+            <!-- 命名为title的插槽 -->
+            <template v-slot:title>
+               <strong>
+                恭喜！
+               </strong>
+                
+            </template>
+
+
+            <!-- 默认插槽 -->
+            <template>
+                新增课程成功！
+            </template>
+        
+            
+        </message>
+        <!-- <message :show.sync="show"  @update:show="" >新增课程成功！</message> -->
+        <h2 v-bind:title="title2"> {{title1}} </h2>
+      
+          <course-add v-model="course" @course-add="addCourse" ></course-add>
+            <!-- number修饰符 -->
+          <p><input type="text" v-model.number="price" >
+            <button @click="batchUpdate">批量更新价格</button>
+        </p>
+
+        <p>
+            <course-list :courses="courses"></course-list>
+        </p>
+
+        <p>
+            课程总数：{{total}} ---使用计算属性
+            <br>
+            课程总数：{{totalCount}} ---使用监控属性
+        </p>
+    </div>
+
+    <script src="vue.js"></script>
+    <script>
+        //弹窗组件
+        Vue.component('message',{
+            props: ['show'],
+            template: `
+                <div class="message-box" v-if="show">
+                    <slot name="title"></slot>
+                    <slot></slot>
+                    <span class="message-box-close" @click="$emit('update:show',false)">X</span>
+                </div>
+            `
+        })
+
+
+        Vue.component("course-add", {
+
+            props: ["value"],
+            
+            template: `
+                <div>
+                    <input  type="text" 
+                            :value="value" 
+                            @input="onInput"
+                            v-on:keydown.enter="addCourse">
+                    <button @click="addCourse">ADD</button>{{value}}
+                </div>
+            `,
+            methods: {
+                // 派发事件，通知父组件新增课程,注意：1.事件名也是羊肉串~~，2.对应根组件的事件处理对应的行数（传参）
+                addCourse() {
+                    this.$emit("course-add")
+                    console.log("增加课程");
+                
+                },
+                onInput(e){
+                    this.$emit('input',e.target.value)
+                    console.log("传回数据");
+                }
+            },
+        })
+
+
+        Vue.component("course-list", {
+            data() {
+                return {
+                    selectedCourse: ""  //当前选中的课程，去确定对应样式是否被渲染
+                }
+            },
+            props: {
+                courses: {
+                    type: Array,
+                    default: []
+                }
+            },
+            template: `
+                <div>
+                    <p v-if="courses.length===0">当前没有任何相关课程</p>
+                    <div v-else>
+                        <div v-for="c in courses" :key="c.name" 
+                            :style="{backgroundColor: selectedCourse===c ? '#ddd' : 'transparent' }"
+                            @click="selectedCourse=c">
+                            {{c.name}}----￥{{c.price}}
+                        </div>
+                    </div>
+                </div>
+               `
+        })
+
+        // 模拟异步数据调用
+        function getCourses() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    // 修改数据结构，对象方式呈现数据，对应course-list组件修改模板中数据的处理
+                    resolve([{name: 'web全栈'}, {name: 'web高级'}])
+                }, 2000);
+            })
+        }
+        const app = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    title1: "购物车111111111111",
+                    title2: "购物车222222222222",
+                    course: "",
+                    courses: [],
+                    show: false,
+                    price: 0
+                }
+            },
+            // 组件已经创建，由于未挂载，DOM元素还不存在
+            async created() {
+                const courses = await getCourses();
+                this.courses = courses
+                // 批量更新商品价格
+                this.batchUpdate()
+            },
+            //在mounted阶段，DOM已经存在，可以访问DOM元素
+            mounted() {
+                ;
+            },
+            methods: {
+                addCourse() {
+                    this.courses.push({name: this.course})
+                    this.course= ""
+                    this.batchUpdate()
+                    this.show =true
+
+                },
+                batchUpdate(){
+                    this.courses.forEach(c => {
+                        // 动态给courses中的对象增加属性，用如下方法触发不了响应式
+                        // c.price=this.price
+                        // 使用VUE官方提供的API
+                        // Vue.set(c,"price",this.price)
+                        // 或者用示例方法
+                        this.$set(c,"price",this.price)
+                    });
+                }
+            },
+            // 用计算属性实现，计算属性有缓存性，如果数据未发生变化，页面不会重新渲染
+            computed: {
+                total() {
+                    console.log(this.courses);
+                    return this.courses.length + " 门"
+                    
+                }
+            },
+            watch: {
+                courses: {
+                    immediate: true,
+                    deep: true,
+                    handler(newValue, oldValue) {
+                        this.totalCount = newValue.length + " 门"
+                    }
+                }
+            },
+
+        })
+
+
+    </script>
+</body>
+
+</html>

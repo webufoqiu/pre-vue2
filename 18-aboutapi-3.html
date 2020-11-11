@@ -9,47 +9,69 @@
         .active {
             background-color: darkgray;
         }
+
         .message-box {
             padding: 10px 20px;
             background: #4fc08d;
             border: 1px solid #42b983;
-
         }
-        .message-box-close {
-            float:right;
 
+        .success {
+            background: #4fc08d;
+            border: 1px solid #42b983;
+        }
+
+        .warning {
+            background: #db4104;
+            border: 1px solid #ec840c;
+        }
+
+        .message-box-close {
+            float: right;
         }
     </style>
 </head>
 
 <body>
     <div id="app">
-        <message :show.sync="show" >
+        <message ref="msgSuccess" class="success">
             <!-- 命名为title的插槽 -->
             <template v-slot:title>
-               <strong>
-                恭喜！
-               </strong>
-                
+                <strong>
+                    恭喜！
+                </strong>
             </template>
-
-
             <!-- 默认插槽 -->
             <template>
                 新增课程成功！
             </template>
-        
-            
         </message>
         <!-- <message :show.sync="show"  @update:show="" >新增课程成功！</message> -->
-        <h2 v-bind:title="title2"> {{title1}} </h2>
-      
-          <course-add v-model="course" @course-add="addCourse" ></course-add>
+        <message ref="msgWarning" class="warning">
+            <!-- 命名为title的插槽 -->
+            <template v-slot:title>
+                <strong>
+                    警告！
+                </strong>
+            </template>
+            <!-- 默认插槽 -->
+            <template>
+                请输入课程名称！
+            </template>
+        </message>
 
+        <h2 v-bind:title="title2"> {{title1}} </h2>
+        <div class="toolbar"> 
+            <button @click="$bus.$emit('message-close')">清空提示框</button>
+        </div>
+        <course-add v-model="course" @course-add="addCourse"></course-add>
+        <!-- number修饰符 -->
+        <p><input type="text" v-model.number="price">
+            <button @click="batchUpdate">批量更新价格</button>
+        </p>
         <p>
             <course-list :courses="courses"></course-list>
         </p>
-
         <p>
             课程总数：{{total}} ---使用计算属性
             <br>
@@ -59,29 +81,50 @@
 
     <script src="vue.js"></script>
     <script>
+        // 事件总线
+        Vue.prototype.$bus = new Vue();
+
         //弹窗组件
-        Vue.component('message',{
-            props: ['show'],
+        Vue.component('message', {
+            // props: ['show'],
+            data() {
+                return {
+                    show: false
+                }
+            },
             template: `
                 <div class="message-box" v-if="show">
                     <slot name="title"></slot>
                     <slot></slot>
-                    <span class="message-box-close" @click="$emit('update:show',false)">X</span>
+                    <span class="message-box-close" @click="toggle">X</span>
                 </div>
-            `
+            `,
+            mounted () {
+                // 只要message组件被加载，监听事件
+                this.$bus.$on('message-close' , ()=>{
+                    this.toggle()
+                })
+            },
+            methods: {
+                toggle() {
+                    this.show=!this.show
+                }
+            },
+
         })
 
 
         Vue.component("course-add", {
 
             props: ["value"],
-            
+
             template: `
                 <div>
                     <input  type="text" 
                             :value="value" 
                             @input="onInput"
-                            v-on:keydown.enter="addCourse">
+                            v-on:keydown.enter="addCourse" 
+                            ref="inp">
                     <button @click="addCourse">ADD</button>{{value}}
                 </div>
             `,
@@ -90,12 +133,16 @@
                 addCourse() {
                     this.$emit("course-add")
                     console.log("增加课程");
-                
+
                 },
-                onInput(e){
-                    this.$emit('input',e.target.value)
+                onInput(e) {
+                    this.$emit('input', e.target.value)
                     console.log("传回数据");
                 }
+            },
+            mounted () {
+                // 使得设置了引用ref的元素获得焦点
+                this.$refs.inp.focus();
             },
         })
 
@@ -116,10 +163,10 @@
                 <div>
                     <p v-if="courses.length===0">当前没有任何相关课程</p>
                     <div v-else>
-                        <div v-for="c in courses" :key="c" 
+                        <div v-for="c in courses" :key="c.name" 
                             :style="{backgroundColor: selectedCourse===c ? '#ddd' : 'transparent' }"
                             @click="selectedCourse=c">
-                            {{c}}
+                            {{c.name}}----￥{{c.price}}
                         </div>
                     </div>
                 </div>
@@ -130,7 +177,8 @@
         function getCourses() {
             return new Promise(resolve => {
                 setTimeout(() => {
-                    resolve(['web全栈', 'web高级'])
+                    // 修改数据结构，对象方式呈现数据，对应course-list组件修改模板中数据的处理
+                    resolve([{ name: 'web全栈' }, { name: 'web高级' }])
                 }, 2000);
             })
         }
@@ -142,13 +190,17 @@
                     title2: "购物车222222222222",
                     course: "",
                     courses: [],
-                    show: false
+                    // show: false,
+                    // showWarn: false,
+                    price: 0
                 }
             },
             // 组件已经创建，由于未挂载，DOM元素还不存在
             async created() {
                 const courses = await getCourses();
                 this.courses = courses
+                // 批量更新商品价格
+                this.batchUpdate()
             },
             //在mounted阶段，DOM已经存在，可以访问DOM元素
             mounted() {
@@ -156,15 +208,32 @@
             },
             methods: {
                 addCourse() {
-                    this.courses.push(this.course)
-                    this.course= ""
-                    this.show =true
+                    if (this.course) {
+                        this.courses.push({ name: this.course })
+                        this.course = ""
+                        this.batchUpdate()
+                        this.$refs.msgSuccess.toggle()
+                    } else {
+                       this.$refs.msgWarning.toggle()
+                    }
+                },
+                batchUpdate() {
+                    this.courses.forEach(c => {
+                        // 动态给courses中的对象增加属性，用如下方法触发不了响应式
+                        // c.price=this.price
+                        // 使用VUE官方提供的API
+                        // Vue.set(c,"price",this.price)
+                        // 或者用示例方法
+                        this.$set(c, "price", this.price)
+                    });
                 }
             },
             // 用计算属性实现，计算属性有缓存性，如果数据未发生变化，页面不会重新渲染
             computed: {
                 total() {
+                    console.log(this.courses);
                     return this.courses.length + " 门"
+
                 }
             },
             watch: {
